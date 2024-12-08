@@ -1,2 +1,2 @@
-src/models/whisper-small_child filter=lfs diff=lfs merge=lfs -text
+src/models/whisper-small_child/** filter=lfs diff=lfs merge=lfs -text
 src/models/whisper-small-aihub-ct2/** filter=lfs diff=lfs merge=lfs -text
