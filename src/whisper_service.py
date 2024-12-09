@@ -1,7 +1,6 @@
 import os
 import torch
 import asyncio
-
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
     WhisperForConditionalGeneration,
@@ -14,11 +13,15 @@ from src.utils import utils
 
 
 class WhisperService:
+    """
+    Service for using the Whisper model for automatic speech recognition (ASR).
+    Ensures the model, processor, tokenizer, and pipeline are initialized only once.
+    """
     _initialized = False
 
     def __init__(self, language: str = 'ko'):
         """
-        Initialize the WhisperService class. This ensures the Whisper model and related components are only initialized once.
+        Initialize the WhisperService instance.
 
         Args:
             language (str): Language code for the model. Default is 'ko' (Korean).
@@ -26,6 +29,7 @@ class WhisperService:
         if not WhisperService._initialized:
             os.environ["TRANSFORMERS_VERBOSITY"] = "error"
             transformers_log.set_verbosity_error()
+
             self.model_name = utils.MODEL_NAME
             self.language = language
             self.task = utils.TASK
@@ -106,7 +110,7 @@ class WhisperService:
 
     def _create_asr_pipeline(self) -> AutomaticSpeechRecognitionPipeline:
         """
-        Create the Whisper automatic speech recognition pipeline.
+        Create the Whisper automatic speech recognition (ASR) pipeline.
 
         Returns:
             AutomaticSpeechRecognitionPipeline: The created ASR pipeline.
