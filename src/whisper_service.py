@@ -1,6 +1,7 @@
-import asyncio
 import os
 import torch
+import asyncio
+
 from transformers import (
     AutomaticSpeechRecognitionPipeline,
     WhisperForConditionalGeneration,
@@ -56,7 +57,7 @@ class WhisperService:
                 torch_dtype=self.torch_dtype,
                 low_cpu_mem_usage=True,
                 use_safetensors=True,
-                attn_implementation='sdpa'
+                attn_implementation='sdpa',
             )
             model.to(self.device)
             log.info(f"Model loaded on {self.device.upper()}")
@@ -139,7 +140,7 @@ class WhisperService:
         try:
             loop = asyncio.get_event_loop()
             log.info(f"Transcribing audio file: {audio_path}")
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 transcript = await loop.run_in_executor(
                     None,
                     lambda: self.pipeline_asr(audio_path, batch_size=8)["text"]

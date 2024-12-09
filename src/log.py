@@ -2,7 +2,7 @@ import logging
 import sys
 
 # Create a custom logger
-logger = logging.getLogger("asr_logger")
+logger = logging.getLogger("logger")
 
 # Set the default log level (can be adjusted as needed)
 logger.setLevel(logging.INFO)

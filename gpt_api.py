@@ -2,7 +2,7 @@ import os
 import tempfile
 import time
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, APIRouter
+from fastapi import FastAPI, File, UploadFile, HTTPException, APIRouter, WebSocket
 from fastapi.responses import JSONResponse
 
 from src import log
@@ -13,12 +13,12 @@ from src.utils.utils import INSTRUCTION
 
 api_key = os.environ.get('OPENAI_API_KEY')
 
-app = FastAPI(title="Role-play Service")
+app = FastAPI(title="Chat Service")
 
-roleplay_router = APIRouter(prefix="/roleplay", tags=["Role-play"])
+roleplay_router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Initialize Whisper and GPT services
-whisper_asr = WhisperService()
+whisper_service = WhisperService()
 gpt_service = GPTService(api_key=api_key)
 
 # Store conversation history
@@ -63,7 +63,7 @@ async def process_audio(file: UploadFile = File(...)):
     try:
         # Transcribe the audio using WhisperService
         transcription_start_time = time.time()
-        transcription = await whisper_asr.transcribe_audio(temp_file_path)
+        transcription = await whisper_service.transcribe_audio(temp_file_path)
         transcription_end_time = time.time()
         transcription_time = transcription_end_time - transcription_start_time
         log.info("Transcription completed")
@@ -98,7 +98,5 @@ async def process_audio(file: UploadFile = File(...)):
     finally:
         log.info(f"Removing temporary file {temp_file_path}")
         os.remove(temp_file_path)
-
-
 
 app.include_router(roleplay_router)
