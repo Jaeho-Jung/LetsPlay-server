@@ -1,3 +1,4 @@
+import time
 import json
 import asyncio
 import websockets
@@ -48,27 +49,31 @@ async def send_wav_file(url: str, file_path: str):
         file_path (str): Path to the .wav file to be sent.
     """
     audio_queue = asyncio.Queue()  # Queue for audio chunks
-
-    # Start audio playback in a separate task
     audio_task = asyncio.create_task(play_audio(audio_queue))
 
     try:
         async with websockets.connect(url) as websocket:
             # Step 1: Read the .wav file in binary mode
+            read_start = time.time()
             with open(file_path, "rb") as wav_file:
                 audio_data = wav_file.read()
+            read_end = time.time()
+            print(f"Read .wav file time: {read_end - read_start:.2f} seconds")
 
             # Step 2: Send the binary audio data to the server
             await websocket.send(audio_data)
 
             # Step 3: Listen for server responses
             while True:
+                response_start = time.time()
                 response = await websocket.recv()
+                response_end = time.time()
 
                 if isinstance(response, str):  # JSON response
                     data = json.loads(response)
                     if data["type"] == "STT":
                         print(f"STT Result: {data['content']}")
+                        print(f"STT Response time: {response_end - response_start:.2f} seconds")
                     elif data["type"] == "LLM":
                         print(f"LLM Response: {data['content']}")
                     elif data["type"] == "END":
@@ -86,6 +91,11 @@ async def send_wav_file(url: str, file_path: str):
 
 # Example usage
 # Uncomment and replace `url` and `file_path` with actual values
-# url = 'ws://example.com/roleplay/stream'
-# file_path = "sample_input_0.wav"
-# asyncio.run(send_wav_file(url, file_path))
+url = 'wss://role-play-api-586976529959.asia-northeast3.run.app/roleplay/stream'
+file_path = "sample_input_1.wav"
+asyncio.run(send_wav_file(url, file_path))
+
+# import requests
+
+# url = 'https://role-play-api-586976529959.asia-northeast3.run.app/roleplay/reset_conversation'
+# requests.post(url)
