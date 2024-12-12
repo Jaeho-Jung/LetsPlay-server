@@ -1,3 +1,5 @@
+import os
+import optparse
 import time
 import json
 import asyncio
@@ -91,11 +93,12 @@ async def send_wav_file(url: str, file_path: str):
 
 # Example usage
 # Uncomment and replace `url` and `file_path` with actual values
-url = 'wss://role-play-api-586976529959.asia-northeast3.run.app/roleplay/stream'
+url = os.getenv('SERVER_URL')
+# url = 'ws://0.0.0.0:8080/roleplay/stream'
 file_path = "sample_input_1.wav"
 asyncio.run(send_wav_file(url, file_path))
 
 # import requests
 
-# url = 'https://role-play-api-586976529959.asia-northeast3.run.app/roleplay/reset_conversation'
+# url = '<url>'
 # requests.post(url)

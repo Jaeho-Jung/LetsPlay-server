@@ -65,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket):
             context.append({"role": "assistant", "content": llm_response.strip()})
 
             # Signal end of response processing
-            await websocket.send_json({"type": "END"})
+            await websocket.send_json({"type": "END", "content": ""})
     except WebSocketDisconnect:
         log.info("WebSocket connection closed.")
     except Exception as e:
