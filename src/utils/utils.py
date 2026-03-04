@@ -1,6 +1,5 @@
 
-MODEL_NAME = "src/models/whisper-small_child"
-TASK = "transcribe"
+MODEL_NAME = "src/models/whisper-small_aihub-ct2"
 SAMPLING_RATE = 16000
 
 INSTRUCTION = """
