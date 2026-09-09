@@ -10,8 +10,8 @@
 클라이언트(앱)로부터 오디오 스트림을 수신하여 **STT → LLM → TTS** 파이프라인을 거쳐 실시간 피드백 음성을 반환하는 엔드투엔드 음성 AI 서버입니다.
 
 **핵심 성과**:
-- CPU 대비 GPU 추론 속도 **42.8배** 향상, Faster-Whisper 도입으로 VRAM **98% 절감** (549MB → 9.9MB)
-- WebSocket 기반 비동기 스트리밍 파이프라인으로 **첫 응답 0.5초 내** 음성 재생
+- Faster-Whisper (CTranslate2 FP16) 기반 STT 서버 구현 — 성능·메모리 비교의 측정 조건과 한계는 아래 벤치마크에 명시
+- WebSocket 기반 비동기 파이프라인으로 LLM 응답을 문장 단위로 TTS에 전달하고 음성 청크 스트리밍
 - Docker + GCP Cloud Run GPU(T4) 컨테이너 배포
 
 > 모델 파인튜닝, 데이터 증강, 추론 최적화 벤치마크 과정은 [letsplay-ai-research](https://github.com/Jaeho-Jung/LetsPlay-ai-research)에서 확인하실 수 있습니다.
@@ -52,7 +52,7 @@ Client (App)
 | **STT: Blocking** | 높음 | 높음 | 발화 완료 후 전체 맥락 보존하여 전사 |
 | **LLM+TTS: Streaming** | 낮음 | — | STT 지연 보상 — 문장 단위로 즉시 TTS 전달 |
 
-> STT 지연(~0.8s)은 LLM·TTS 스트리밍으로 상쇄하여 **체감 대기시간(TTFB)을 0.5초 내**로 유지합니다.
+> STT 완료 후 LLM·TTS를 문장 단위로 연결해 전체 응답 생성이 끝나기 전에 음성 전송을 시작합니다. 단일 STT 실험의 지연 시간은 서버의 종단 간 지연이나 첫 바이트 수신(TTFB)·첫 음성 재생 시간을 의미하지 않으며, 각 지표는 별도 측정이 필요합니다.
 >
 > 실제 구현: `gpt_service.async_generate_chat_response()`가 문장 단위(`". ! ?"` 기준)로 yield하면, 즉시 `async_generate_tts_response()`로 전달하여 문장이 완성되는 즉시 PCM 청크를 스트리밍합니다.
 
@@ -68,15 +68,18 @@ Client (App)
 
 ### 추론 엔진 마이그레이션
 
-HuggingFace `pipeline` 오버헤드를 제거하고 **Faster-Whisper (CTranslate2 FP16)** 을 도입했습니다.
+기록된 지연 시간과 서버 런타임 적용성을 바탕으로 **Faster-Whisper (CTranslate2 FP16)** 을 도입했습니다.
 
-| 항목 | HuggingFace Pipeline | Faster-Whisper (CT2) | 개선 |
-|---|:---:|:---:|:---:|
-| 단건 추론 속도 | 6.02s | **0.80s** | **7.5x** |
-| 모델 VRAM | 477.8 MB | **9.9 MB** | **98% 절감** |
-| 피크 VRAM | 549.3 MB | **9.9 MB** | **98% 절감** |
+[연구 README의 GPU 엔진 비교](https://github.com/Jaeho-Jung/LetsPlay-ai-research/blob/966a94e3218608e98a01364cb5a1a7c5e2235342/README.md#실험-1-단일-추론-최적화--cpu-vs-gpu-비교)에 남은 기존 실험 기록입니다. Google Colab T4 GPU에서 동일한 오디오 파일과 `elmenwol/whisper-small_aihub_child`, 배치 1로 각 엔진 로드 후 **워밍업 없이 첫 함수 호출**을 측정했습니다. 오디오 길이는 기록되지 않았고, 전처리·디코딩 구현과 생성 옵션의 동등성도 검증되지 않아 확정적인 속도 개선 배수나 엔진 순위로 해석하지 않습니다.
 
-> VRAM 98% 절감으로 클라우드 GPU 인스턴스의 비용 효율이 대폭 향상되었으며, 동시 접속 처리의 기반을 마련했습니다.
+| 엔진 | 첫 호출 시간 | 메모리 측정 |
+|---|:---:|---|
+| Direct Inference (FP16) | 6.02s | PyTorch allocator 기준 모델 477.8 MB, 피크 549.3 MB |
+| Faster-Whisper (CTranslate2) | 0.80s | **재측정 필요** |
+
+> 기존 CTranslate2 메모리 값은 `torch.cuda.memory_allocated()`로 수집되어 PyTorch 밖의 CUDA 할당을 반영하지 못했을 가능성이 큽니다. 따라서 VRAM 절감률은 제시하지 않으며, NVML 또는 `nvidia-smi`로 프로세스 GPU 메모리를 재측정해야 합니다.
+>
+> CPU/GPU 기록은 워밍업·반복 횟수·측정 경로가 달라 직접적인 속도 배수 계산에 사용하지 않습니다. 실제 성능·VRAM 우위는 동일한 오디오·생성 옵션·워밍업·반복 측정 조건에서 재검증해야 하며, 비용 효율과 동시 처리 용량도 기존 기록만으로 입증되지 않습니다.
 
 **서비스 구현**: `WhisperService`는 싱글톤 패턴으로 모델을 한 번만 로드하고, `asyncio.run_in_executor`로 블로킹 추론을 비동기 이벤트 루프에서 논블로킹으로 처리합니다.
 
@@ -96,20 +99,20 @@ async def transcribe_audio(self, audio_path: str) -> str:
 
 ## 3. 동시성 제어 및 스케일링 전략
 
-N=50 동시 요청 벤치마크 결과를 기반으로 도출한 트래픽 제어 전략입니다.
+별도 CTranslate2 FP16 실험에서 동일한 오디오 경로를 반복 사용해 **요청 50건**을 처리한 기록입니다. Baseline은 순차 실행하고 나머지는 각 구현의 큐·동시 실행 방식을 사용했습니다. 모델 로딩과 네트워크 I/O는 제외했으며, P95는 각 요청 함수의 시작부터 완료까지의 경과 시간입니다. 오디오 길이와 독립적인 워밍업 횟수는 기록되지 않아 단일 추론 표나 실제 서버의 동시 요청 성능과 직접 비교하지 않습니다.
 
-| 전략 | QPS | P95 지연 | 선택 여부 |
+| 전략 | QPS | P95 지연 | 기록 내 관찰 |
 |---|:---:|:---:|:---:|
-| **Baseline (순차) + Rate Limiting** | 5.28 | **0.259s** | **현재 적용** |
-| num_workers (CT2) | 6.62 | 7.394s | — |
-| Async Queue | 2.18 | 22.016s | — |
+| **Baseline (순차)** | 5.28 | **0.259s** | 가장 낮은 P95 |
+| num_workers (CT2) | 6.62 | 7.394s | 높은 처리량, 긴 꼬리 지연 |
+| Async Queue | 2.18 | 22.016s | 낮은 처리량, 긴 꼬리 지연 |
 
-**현재 (단일 GPU)**: Faster-Whisper의 CTranslate2 내부 커널 스케줄링이 이미 최적화되어 있어 외부 큐는 오버헤드만 추가합니다. **Baseline 순차 처리 + Rate Limiting**으로 P95 0.259s의 가장 낮은 꼬리 지연을 보장합니다.
+**전략 해석**: 기록상 Baseline의 P95가 가장 낮지만, 이를 서비스 지연 보장이나 외부 큐가 항상 불필요하다는 근거로 사용하지 않습니다. Rate Limiting은 운영 전략으로 검토하되, 위 표의 Baseline 측정값을 Rate Limiting 적용 효과로 해석하지 않습니다. 실제 SLA 판단 전에는 오디오 길이·워밍업·생성 옵션·동시 요청 시작 조건·서버 I/O를 고정해 재측정해야 합니다.
 
-**스케일업 로드맵 (N > 100)**:
+**확장 후속 검토안 (부하 검증 필요)**: Async Queue는 backpressure와 자원 사용량 제어를 위한 선택지입니다. 고부하 처리량, OOM 방지 효과와 확장성은 후속 검증이 필요합니다.
 ```
-Redis Async Queue → GPU당 Worker Process → 처리량 선형 확장
-QueueFullError → HTTP 429 (graceful degradation)
+Redis Async Queue → GPU당 Worker Process → 수평 확장 검토
+큐 포화 시 요청 거절·재시도 정책 검토
 ```
 
 ---
