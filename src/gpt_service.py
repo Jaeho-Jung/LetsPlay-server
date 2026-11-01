@@ -17,7 +17,7 @@ class GPTService:
         Args:
             api_key (str): API key for authenticating with the OpenAI service.
         """
-        if not GPTService._initialized:
+        if not hasattr(self, 'async_client'):
             try:
                 log.info("Starting GPT service...")
                 self.client = OpenAI(api_key=api_key)
@@ -96,6 +96,7 @@ class GPTService:
                 model=model,
                 messages=messages,
                 temperature=temperature,
+                max_tokens=max_tokens,
                 stream=True,
             )
 

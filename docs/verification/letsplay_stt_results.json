@@ -1,0 +1,25 @@
+{
+  "device": "cpu",
+  "compute_type": "float32",
+  "model_load_seconds": 1.2107866669539362,
+  "samples": [
+    {
+      "sample": "sample_input_0.wav",
+      "audio_seconds": 3.1625,
+      "success": true,
+      "elapsed_seconds": 3.1161178330658004
+    },
+    {
+      "sample": "sample_input_1.wav",
+      "audio_seconds": 9.2375,
+      "success": true,
+      "elapsed_seconds": 6.977588000008836
+    },
+    {
+      "sample": "sample_input_2.wav",
+      "audio_seconds": 1.6875,
+      "success": true,
+      "elapsed_seconds": 1.472864499897696
+    }
+  ]
+}

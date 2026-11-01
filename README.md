@@ -208,6 +208,35 @@ LetsPlay-server/
 
 ---
 
+## 2026-11-01 추가 재현 검증
+
+기존 실험 기록과 별도로, 지원 준비 중 Codex를 활용해 공개 코드를 재현 검사했습니다.
+[검증 보고서와 지표](docs/verification/2026-11-01.md)에 실행 조건과 관찰값을 정리했습니다. 음성 전사문과 생성 답변 원문은 공개 자료에서 제외했습니다.
+macOS ARM64 CPU/FP32에서 저장소 WAV 3건을 실제 STT → GPT-4o-mini → tts-1로 처리해
+STT·LLM·PCM·END 수신을 확인했습니다. 정답 전사문과 청취 평가는 없어 WER·음질은 평가하지 않았습니다.
+
+기존 응답은 4~8문장·질문 2~5개였고, 같은 입력을 사용해 시스템 프롬프트를 수정한 최종 실행에서는
+3건 모두 두 문장·질문 하나·90자 이내였습니다. 수정에 사용한 3개 입력의 관찰이며 미지 입력 품질이나
+지연 개선을 입증하는 Benchmark는 아닙니다. API 연결 검사는 사용자의 외부 전송 허용 후 진행했습니다.
+
+재현에 필요한 보강: 설정 모듈 import, 모델 경로, WAV 바이트의 파일 객체 변환,
+누락된 vocabulary 복원, faster-whisper 의존성 및 PyAV 호환 범위, 연결별 대화 분리,
+토큰 제한 전달, 짧은 PCM 응답 재생을 수정했습니다. 자동 회귀 검사 8개가 통과했습니다.
+
+```bash
+git lfs pull --include='src/models/whisper-small-aihub-ct2/*' --exclude=''
+pip install -r requirements.txt -r requirements-test.txt
+python -m test.prepare_ct2_vocab
+python -m pytest test/test_regressions.py -q
+HF_HUB_OFFLINE=1 python -m test.verify_stt
+# 실제 OpenAI 호출에는 본인의 API 키와 사용료가 필요합니다.
+python -m test.verify_live --output live_results.json
+```
+
+`test/test.py`의 소리 재생에는 별도로 PyAudio와 OS 오디오 장치가 필요합니다.
+회귀 검사에서는 외부 모델/API를 대체하고, 실제 연결 검사는 로컬 FastAPI TestClient를 사용했습니다.
+Cloud Run 재배포, 브라우저·앱 재생, 실제 아동 대상 사용자 평가는 이번 검사 범위에 포함하지 않았습니다.
+
 ## Author
 
 **정재호 (Jaeho Jung)** — Team Leader

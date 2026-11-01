@@ -23,6 +23,8 @@ async def play_audio(queue: asyncio.Queue):
         while len(buffer) < 10:  # Collect initial 10 chunks for buffering
             audio_chunk = await queue.get()
             if audio_chunk is None:
+                for chunk in buffer:
+                    player_stream.write(chunk)
                 return  # Exit signal received
             buffer.append(audio_chunk)
 
@@ -93,10 +95,11 @@ async def send_wav_file(url: str, file_path: str):
 
 # Example usage
 # Uncomment and replace `url` and `file_path` with actual values
-url = os.getenv('SERVER_URL')
-# url = 'ws://0.0.0.0:8080/roleplay/stream'
-file_path = "sample_input_1.wav"
-asyncio.run(send_wav_file(url, file_path))
+if __name__ == "__main__":
+    from pathlib import Path
+    url = os.getenv('SERVER_URL', 'ws://127.0.0.1:8080/roleplay/stream')
+    file_path = str(Path(__file__).with_name("sample_input_1.wav"))
+    asyncio.run(send_wav_file(url, file_path))
 
 # import requests
 

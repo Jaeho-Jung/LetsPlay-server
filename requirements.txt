@@ -7,3 +7,5 @@ accelerate
 python-multipart
 ffmpeg
 openai
+faster-whisper
+av>=11,<19

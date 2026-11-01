@@ -1,6 +1,8 @@
 import os
 import asyncio
+from io import BytesIO
 from src import log
+from src.utils import utils
 from faster_whisper import WhisperModel
 
 
@@ -8,8 +10,8 @@ class WhisperService:
     """
     Faster-Whisper (CTranslate2) 기반 음성 인식 서비스.
 
-    HuggingFace Pipeline 대신 CTranslate2 엔진을 사용하여
-    추론 속도 2~3배 향상 및 VRAM 사용량을 대폭 절감합니다.
+    CTranslate2 엔진으로 음성을 전사합니다. 성능 비교의 측정 조건과
+    한계는 README의 벤치마크 기록을 참조하세요.
     """
 
     _instance = None
@@ -92,7 +94,7 @@ class WhisperService:
             log.error(f"Error during model loading: {e}")
             raise
 
-    def transcribe_sync(self, audio_path: str) -> str:
+    def transcribe_sync(self, audio_path: str | bytes) -> str:
         """
         Synchronously transcribe an audio file.
 
@@ -103,9 +105,10 @@ class WhisperService:
             The transcription of the audio file.
         """
         try:
-            log.info(f"Transcribing audio file: {audio_path}")
+            log.info("Transcribing audio input")
+            audio_input = BytesIO(audio_path) if isinstance(audio_path, bytes) else audio_path
             segments, info = self.model.transcribe(
-                audio_path,
+                audio_input,
                 language=self.language,
                 task=self.task,
                 beam_size=self.beam_size,
@@ -123,7 +126,7 @@ class WhisperService:
             log.error(f"Error during transcription: {e}")
             raise
 
-    async def transcribe_audio(self, audio_path: str) -> str:
+    async def transcribe_audio(self, audio_path: str | bytes) -> str:
         """
         Asynchronously transcribe an audio file using the Whisper model.
 

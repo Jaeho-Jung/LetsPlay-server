@@ -1,0 +1,64 @@
+{
+  "environment": {
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "device": "cpu",
+    "compute_type": "float32"
+  },
+  "samples": [
+    {
+      "sample": "sample_input_0.wav",
+      "audio_seconds": 3.1625,
+      "pcm_bytes": 220200,
+      "stt_seconds": 1.9403967499965802,
+      "first_pcm_seconds": 4.778113542008214,
+      "success": true,
+      "total_seconds": 6.729283250053413,
+      "event_types": [
+        "STT",
+        "LLM",
+        "LLM",
+        "END"
+      ],
+      "reply_characters": 38,
+      "reply_sentences": 2,
+      "reply_questions": 1
+    },
+    {
+      "sample": "sample_input_1.wav",
+      "audio_seconds": 9.2375,
+      "pcm_bytes": 191400,
+      "stt_seconds": 3.2580278750974685,
+      "first_pcm_seconds": 5.304776084027253,
+      "success": true,
+      "total_seconds": 7.380566125037149,
+      "event_types": [
+        "STT",
+        "LLM",
+        "LLM",
+        "END"
+      ],
+      "reply_characters": 32,
+      "reply_sentences": 2,
+      "reply_questions": 1
+    },
+    {
+      "sample": "sample_input_2.wav",
+      "audio_seconds": 1.6875,
+      "pcm_bytes": 187200,
+      "stt_seconds": 1.7415446669328958,
+      "first_pcm_seconds": 4.943503874936141,
+      "success": true,
+      "total_seconds": 8.402368791983463,
+      "event_types": [
+        "STT",
+        "LLM",
+        "LLM",
+        "END"
+      ],
+      "reply_characters": 31,
+      "reply_sentences": 2,
+      "reply_questions": 1
+    }
+  ]
+}

@@ -17,8 +17,8 @@ app = FastAPI(title="Role-play Service")
 whisper_service = WhisperService()
 gpt_service = GPTService(api_key=api_key)
 
-# Define global conversation context
-context = [{'role': 'system', 'content': INSTRUCTION}]
+# Each active connection owns its conversation history.
+conversation_contexts = {}
 
 # Role-play stream router
 roleplay_stream_router = APIRouter(prefix="/roleplay", tags=["Role-play Stream"])
@@ -29,8 +29,8 @@ async def reset_conversation():
     """
     Reset the conversation context to start a new dialogue.
     """
-    global context
-    context = [{'role': 'system', 'content': INSTRUCTION}]
+    for context in conversation_contexts.values():
+        context[:] = [{'role': 'system', 'content': INSTRUCTION}]
     log.info("Conversation context has been reset.")
     return JSONResponse(content={"message": "Conversation context reset successfully."})
 
@@ -41,6 +41,8 @@ async def websocket_endpoint(websocket: WebSocket):
     WebSocket endpoint for handling real-time role-play interactions.
     """
     await websocket.accept()
+    context = [{'role': 'system', 'content': INSTRUCTION}]
+    conversation_contexts[websocket] = context
     try:
         while True:
             # Step 1: Receive audio data from the client
@@ -71,6 +73,8 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         log.error(f"WebSocket error: {e}")
         await websocket.close()
+    finally:
+        conversation_contexts.pop(websocket, None)
 
 
 # Include the router in the FastAPI app
